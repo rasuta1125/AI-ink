@@ -19,8 +19,11 @@
     "git:status": "git status"
   },
   "dependencies": {
+    "@hono/node-server": "^1.19.4",
     "hono": "^4.9.9",
     "openai": "^4.63.0",
+    "tsx": "^4.20.6",
+    "unenv": "^2.0.0-rc.21",
     "zod": "^3.22.4"
   },
   "devDependencies": {

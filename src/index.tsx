@@ -165,6 +165,10 @@ app.get('/', (c) => {
                         </h1>
                     </div>
                     <div class="flex items-center space-x-4">
+                        <a href="/reply-bot" class="text-primary-600 hover:text-primary-700 font-medium text-sm flex items-center transition-colors">
+                            <i class="fas fa-robot mr-2"></i>
+                            返信ボット
+                        </a>
                         <button id="guideBtn" class="text-primary-600 hover:text-primary-700 font-medium text-sm flex items-center">
                             <i class="fas fa-question-circle mr-2"></i>
                             使い方ガイド
@@ -1234,6 +1238,563 @@ app.get('/', (c) => {
                     localStorage.setItem('firstVisit', 'true');
                 }, 2000);
             }
+        </script>
+    </body>
+    </html>
+  `)
+})
+
+// 返信ボットページ
+app.get('/reply-bot', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ja">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>返信ボット - お客様対応を効率化</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <script>
+          tailwind.config = {
+            theme: {
+              extend: {
+                colors: {
+                  primary: {
+                    50: '#f0f9ff',
+                    100: '#e0f2fe',
+                    200: '#bae6fd',
+                    300: '#7dd3fc',
+                    400: '#38bdf8',
+                    500: '#0ea5e9',
+                    600: '#0284c7',
+                    700: '#0369a1',
+                    800: '#075985',
+                    900: '#0c4a6e'
+                  }
+                }
+              }
+            }
+          }
+        </script>
+        <style>
+          .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          }
+          
+          .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+          }
+          
+          .animate-fade-in {
+            animation: fadeIn 0.8s ease-out;
+          }
+          
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          
+          .hidden { display: none; }
+        </style>
+    </head>
+    <body class="bg-gray-50 min-h-screen">
+        <!-- ナビゲーション -->
+        <nav class="bg-white shadow-sm border-b">
+            <div class="container mx-auto px-4 py-4">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-4">
+                        <h1 class="text-xl font-bold text-gray-800">
+                            <i class="fas fa-robot text-primary-500 mr-2"></i>
+                            返信ボット
+                        </h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <a href="/" class="text-primary-600 hover:text-primary-700 font-medium text-sm flex items-center transition-colors">
+                            <i class="fas fa-magic mr-2"></i>
+                            AIコピー生成ink
+                        </a>
+                        <div id="navButtons" class="flex items-center space-x-4">
+                            <!-- ログイン前 -->
+                            <div id="loginButtons">
+                                <button id="loginBtn" class="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                                    <i class="fas fa-sign-in-alt mr-2"></i>
+                                    ログイン
+                                </button>
+                            </div>
+                            <!-- ログイン後 -->
+                            <div id="userButtons" class="hidden">
+                                <span id="userName" class="text-gray-600 mr-4"></span>
+                                <button id="logoutBtn" class="text-gray-600 hover:text-gray-800 font-medium">
+                                    <i class="fas fa-sign-out-alt mr-2"></i>
+                                    ログアウト
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- ログイン画面 -->
+        <div id="loginScreen" class="min-h-screen gradient-bg flex items-center justify-center p-4">
+            <div class="glass-effect rounded-2xl p-8 w-full max-w-md animate-fade-in">
+                <div class="text-center mb-8">
+                    <div class="bg-white p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                        <i class="fas fa-robot text-2xl text-primary-500"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">返信ボット</h2>
+                    <p class="text-gray-600">お客様対応を効率化</p>
+                </div>
+
+                <!-- ログインフォーム -->
+                <form id="loginForm" class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-envelope mr-2"></i>メールアドレス
+                        </label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            placeholder="your@email.com"
+                            required
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            <i class="fas fa-lock mr-2"></i>パスワード
+                        </label>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                            placeholder="パスワード"
+                            required
+                        >
+                    </div>
+                    
+                    <button 
+                        type="submit" 
+                        class="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+                    >
+                        <i class="fas fa-sign-in-alt mr-2"></i>
+                        ログイン
+                    </button>
+                </form>
+
+                <div class="mt-6 text-center">
+                    <p class="text-gray-600 text-sm mb-4">または</p>
+                    <button 
+                        id="googleLoginBtn"
+                        class="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
+                    >
+                        <i class="fab fa-google mr-2 text-red-500"></i>
+                        Googleでログイン
+                    </button>
+                </div>
+
+                <div class="mt-6 text-center">
+                    <p class="text-gray-600 text-sm">
+                        アカウントをお持ちでない場合は、
+                        <button id="signupBtn" class="text-primary-500 hover:text-primary-600 font-medium">
+                            新規登録
+                        </button>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- メインアプリ画面 -->
+        <div id="mainApp" class="hidden min-h-screen">
+            <!-- タブナビゲーション -->
+            <div class="bg-white shadow-sm border-b">
+                <div class="container mx-auto px-4">
+                    <nav class="flex space-x-8">
+                        <button id="replyTab" class="py-4 px-2 border-b-2 border-primary-500 text-primary-600 font-medium">
+                            <i class="fas fa-reply mr-2"></i>返信生成
+                        </button>
+                        <button id="knowledgeTab" class="py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium">
+                            <i class="fas fa-database mr-2"></i>ナレッジ登録
+                        </button>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- 返信生成ページ -->
+            <div id="replyPage" class="container mx-auto px-4 py-8">
+                <div class="max-w-4xl mx-auto">
+                    <div class="glass-effect rounded-2xl p-8">
+                        <div class="mb-8">
+                            <h2 class="text-2xl font-bold text-gray-800 mb-2">
+                                <i class="fas fa-reply text-primary-500 mr-3"></i>
+                                返信生成
+                            </h2>
+                            <p class="text-gray-600">お客様からの問い合わせに対する返信案を3パターン生成します</p>
+                        </div>
+
+                        <!-- 問い合わせ文入力 -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-3">
+                                <i class="fas fa-comment-dots mr-2"></i>お客様からの問い合わせ文
+                            </label>
+                            <textarea 
+                                id="inquiryText"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                                rows="4"
+                                placeholder="例：来週の土曜日に予約を取りたいのですが、空いている時間はありますか？料金も教えてください。"
+                            ></textarea>
+                        </div>
+
+                        <!-- トーン選択 -->
+                        <div class="mb-6">
+                            <label class="block text-sm font-medium text-gray-700 mb-3">
+                                <i class="fas fa-palette mr-2"></i>返信トーン
+                            </label>
+                            <div class="grid grid-cols-3 gap-4">
+                                <label class="flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                                    <input type="radio" name="tone" value="polite" class="mr-3" checked>
+                                    <div>
+                                        <div class="font-medium text-gray-800">丁寧</div>
+                                        <div class="text-sm text-gray-600">敬語でしっかりと</div>
+                                    </div>
+                                </label>
+                                <label class="flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                                    <input type="radio" name="tone" value="casual" class="mr-3">
+                                    <div>
+                                        <div class="font-medium text-gray-800">カジュアル</div>
+                                        <div class="text-sm text-gray-600">親しみやすく</div>
+                                    </div>
+                                </label>
+                                <label class="flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                                    <input type="radio" name="tone" value="firm" class="mr-3">
+                                    <div>
+                                        <div class="font-medium text-gray-800">きっぱり</div>
+                                        <div class="text-sm text-gray-600">簡潔で明確に</div>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- 生成ボタン -->
+                        <div class="mb-8 text-center">
+                            <button 
+                                id="generateBtn"
+                                class="bg-primary-500 hover:bg-primary-600 text-white font-medium px-8 py-3 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                disabled
+                            >
+                                <i class="fas fa-magic mr-2"></i>
+                                返信案を生成
+                            </button>
+                        </div>
+
+                        <!-- 結果表示エリア -->
+                        <div id="resultsArea" class="hidden">
+                            <h3 class="text-lg font-semibold text-gray-800 mb-6">
+                                <i class="fas fa-list mr-2 text-primary-500"></i>
+                                返信案（3パターン）
+                            </h3>
+                            <div id="repliesContainer" class="space-y-6">
+                                <!-- 返信案がここに表示される -->
+                            </div>
+
+                            <!-- 不足情報表示 -->
+                            <div id="missingInfo" class="hidden mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <div class="flex items-start">
+                                    <i class="fas fa-exclamation-triangle text-yellow-600 mt-1 mr-3"></i>
+                                    <div>
+                                        <h4 class="font-medium text-yellow-800 mb-2">不足している情報があります</h4>
+                                        <ul id="missingList" class="text-sm text-yellow-700">
+                                            <!-- 不足情報がここに表示される -->
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ナレッジ未登録警告 -->
+                        <div id="noKnowledgeWarning" class="hidden p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <div class="flex items-start">
+                                <i class="fas fa-exclamation-circle text-red-600 mt-1 mr-3"></i>
+                                <div>
+                                    <h4 class="font-medium text-red-800 mb-2">基本情報を登録してください</h4>
+                                    <p class="text-sm text-red-700 mb-3">返信生成には事業の基本情報が必要です。</p>
+                                    <button id="goToKnowledge" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm font-medium">
+                                        ナレッジ登録へ
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ナレッジ登録ページ -->
+            <div id="knowledgePage" class="hidden container mx-auto px-4 py-8">
+                <div class="max-w-4xl mx-auto">
+                    <div class="glass-effect rounded-2xl p-8">
+                        <div class="mb-8">
+                            <h2 class="text-2xl font-bold text-gray-800 mb-2">
+                                <i class="fas fa-database text-primary-500 mr-3"></i>
+                                ナレッジ登録
+                            </h2>
+                            <p class="text-gray-600">事業の基本情報を登録して、正確な返信生成を可能にします</p>
+                        </div>
+
+                        <form id="knowledgeForm" class="space-y-8">
+                            <!-- 基本情報 -->
+                            <div class="bg-gray-50 p-6 rounded-lg">
+                                <h3 class="text-lg font-semibold text-gray-800 mb-4">
+                                    <i class="fas fa-info-circle text-primary-500 mr-2"></i>
+                                    基本情報（必須）
+                                </h3>
+                                
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">業種</label>
+                                        <select id="businessType" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent" required>
+                                            <option value="">選択してください</option>
+                                            <option value="salon">美容サロン</option>
+                                            <option value="ec">EC・ショップ</option>
+                                            <option value="studio">写真館・スタジオ</option>
+                                            <option value="restaurant">飲食店</option>
+                                            <option value="clinic">クリニック・治療院</option>
+                                            <option value="school">教室・スクール</option>
+                                            <option value="other">その他</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">最低料金または代表プラン</label>
+                                        <input 
+                                            type="text" 
+                                            id="pricing"
+                                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                            placeholder="例：カット 3,000円〜"
+                                            required
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 保存ボタン -->
+                            <div class="text-center pt-4">
+                                <button 
+                                    type="submit"
+                                    class="bg-primary-500 hover:bg-primary-600 text-white font-medium px-8 py-3 rounded-lg transition-colors"
+                                >
+                                    <i class="fas fa-save mr-2"></i>
+                                    保存する
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ローディング表示 -->
+        <div id="loading" class="hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-6 text-center">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto mb-4"></div>
+                <p class="text-gray-600">処理中...</p>
+            </div>
+        </div>
+
+        <script>
+            // 返信ボット用のJavaScript（簡略版）
+            let currentUser = null;
+            let userKnowledge = null;
+
+            // 初期化
+            function init() {
+                const savedUser = localStorage.getItem('replyBotUser');
+                if (savedUser) {
+                    currentUser = JSON.parse(savedUser);
+                    showMainApp();
+                    loadUserKnowledge();
+                } else {
+                    showLoginScreen();
+                }
+                setupEventListeners();
+            }
+
+            function setupEventListeners() {
+                // ログイン
+                document.getElementById('loginForm').addEventListener('submit', handleLogin);
+                document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+                
+                // タブ切り替え
+                document.getElementById('replyTab').addEventListener('click', () => showTab('reply'));
+                document.getElementById('knowledgeTab').addEventListener('click', () => showTab('knowledge'));
+                
+                // 返信生成
+                document.getElementById('inquiryText').addEventListener('input', validateGenerateBtn);
+                document.getElementById('generateBtn').addEventListener('click', generateReplies);
+                
+                // ナレッジフォーム
+                document.getElementById('knowledgeForm').addEventListener('submit', saveKnowledge);
+            }
+
+            async function handleLogin(e) {
+                e.preventDefault();
+                const email = document.getElementById('email').value;
+                const user = { id: 'replybot_' + Date.now(), email, name: email.split('@')[0] };
+                
+                currentUser = user;
+                localStorage.setItem('replyBotUser', JSON.stringify(user));
+                showMainApp();
+            }
+
+            function handleLogout() {
+                currentUser = null;
+                userKnowledge = null;
+                localStorage.removeItem('replyBotUser');
+                localStorage.removeItem('replyBotKnowledge');
+                showLoginScreen();
+            }
+
+            function showLoginScreen() {
+                document.getElementById('loginScreen').classList.remove('hidden');
+                document.getElementById('mainApp').classList.add('hidden');
+                document.getElementById('loginButtons').classList.remove('hidden');
+                document.getElementById('userButtons').classList.add('hidden');
+            }
+
+            function showMainApp() {
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                document.getElementById('loginButtons').classList.add('hidden');
+                document.getElementById('userButtons').classList.remove('hidden');
+                document.getElementById('userName').textContent = currentUser?.name || '';
+                showTab('reply');
+            }
+
+            function showTab(tab) {
+                document.querySelectorAll('[id$="Tab"]').forEach(btn => {
+                    btn.classList.remove('border-primary-500', 'text-primary-600');
+                    btn.classList.add('border-transparent', 'text-gray-500');
+                });
+                
+                document.getElementById('replyPage').classList.add('hidden');
+                document.getElementById('knowledgePage').classList.add('hidden');
+
+                if (tab === 'reply') {
+                    document.getElementById('replyTab').classList.remove('border-transparent', 'text-gray-500');
+                    document.getElementById('replyTab').classList.add('border-primary-500', 'text-primary-600');
+                    document.getElementById('replyPage').classList.remove('hidden');
+                } else if (tab === 'knowledge') {
+                    document.getElementById('knowledgeTab').classList.remove('border-transparent', 'text-gray-500');
+                    document.getElementById('knowledgeTab').classList.add('border-primary-500', 'text-primary-600');
+                    document.getElementById('knowledgePage').classList.remove('hidden');
+                }
+            }
+
+            async function loadUserKnowledge() {
+                const saved = localStorage.getItem('replyBotKnowledge_' + currentUser.id);
+                if (saved) {
+                    userKnowledge = JSON.parse(saved);
+                }
+            }
+
+            async function saveKnowledge(e) {
+                e.preventDefault();
+                const knowledge = {
+                    businessType: document.getElementById('businessType').value,
+                    pricing: document.getElementById('pricing').value
+                };
+                
+                userKnowledge = knowledge;
+                localStorage.setItem('replyBotKnowledge_' + currentUser.id, JSON.stringify(knowledge));
+                alert('ナレッジを保存しました！');
+                showTab('reply');
+            }
+
+            function validateGenerateBtn() {
+                const hasText = document.getElementById('inquiryText').value.trim().length > 0;
+                document.getElementById('generateBtn').disabled = !hasText;
+            }
+
+            async function generateReplies() {
+                if (!userKnowledge || !userKnowledge.businessType) {
+                    document.getElementById('noKnowledgeWarning').classList.remove('hidden');
+                    return;
+                }
+
+                document.getElementById('noKnowledgeWarning').classList.add('hidden');
+                document.getElementById('loading').classList.remove('hidden');
+                
+                // 簡易デモ実装
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                const replies = [
+                    {
+                        style: "丁寧",
+                        text: "お問い合わせいただきありがとうございます。\\n\\n" + userKnowledge.businessType + "についてのご質問ですね。\\n料金は" + userKnowledge.pricing + "となっております。\\n\\n詳細につきましては、お気軽にお問い合わせください。\\n\\nよろしくお願いいたします。",
+                        needs: [],
+                        refs: []
+                    },
+                    {
+                        style: "カジュアル", 
+                        text: "ありがとうございます！\\n\\n" + userKnowledge.businessType + "のお問い合わせですね。\\n料金は" + userKnowledge.pricing + "です。\\n\\nお気軽にお問い合わせくださいね。",
+                        needs: [],
+                        refs: []
+                    },
+                    {
+                        style: "短文",
+                        text: "ありがとうございます。\\n" + userKnowledge.pricing + "です。\\nお電話でお問い合わせください。",
+                        needs: [],
+                        refs: []
+                    }
+                ];
+                
+                displayReplies(replies);
+                document.getElementById('loading').classList.add('hidden');
+            }
+
+            function displayReplies(replies) {
+                const container = document.getElementById('repliesContainer');
+                container.innerHTML = '';
+                
+                replies.forEach(reply => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-white border border-gray-200 rounded-lg p-6';
+                    div.innerHTML = \`
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="font-semibold text-gray-800">
+                                <i class="fas fa-comment mr-2 text-primary-500"></i>
+                                \${reply.style}
+                            </h4>
+                            <button onclick="copyToClipboard('\${reply.text}', this)" class="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded text-sm font-medium">
+                                <i class="fas fa-copy mr-1"></i>コピー
+                            </button>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <pre class="whitespace-pre-wrap text-sm text-gray-800">\${reply.text}</pre>
+                        </div>
+                    \`;
+                    container.appendChild(div);
+                });
+                
+                document.getElementById('resultsArea').classList.remove('hidden');
+            }
+
+            function copyToClipboard(text, button) {
+                navigator.clipboard.writeText(text).then(() => {
+                    button.innerHTML = '<i class="fas fa-check mr-1"></i>コピー済み';
+                    button.classList.add('bg-green-500');
+                    setTimeout(() => {
+                        button.innerHTML = '<i class="fas fa-copy mr-1"></i>コピー';
+                        button.classList.remove('bg-green-500');
+                    }, 2000);
+                });
+            }
+
+            // 初期化実行
+            init();
         </script>
     </body>
     </html>
