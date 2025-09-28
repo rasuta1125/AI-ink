@@ -16,7 +16,9 @@
     "git:status": "git status"
   },
   "dependencies": {
-    "hono": "^4.9.9"
+    "hono": "^4.9.9",
+    "openai": "^4.63.0",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250924.0",
