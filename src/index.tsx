@@ -483,27 +483,7 @@ app.get('/', (c) => {
                 </div>
             </div>
 
-            <!-- API Key 設定エリア -->
-            <div class="mt-12">
-                <div class="glass-effect rounded-2xl shadow-soft p-6">
-                    <div class="flex items-center mb-4">
-                        <div class="bg-accent-100 p-2 rounded-lg mr-3">
-                            <i class="fas fa-key text-accent-600"></i>
-                        </div>
-                        <h3 class="text-lg font-semibold text-gray-800">OpenAI API Key 設定（オプション）</h3>
-                    </div>
-                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                        <div class="flex items-start">
-                            <i class="fas fa-info-circle text-blue-600 mt-1 mr-3"></i>
-                            <div class="text-sm text-blue-800">
-                                <p class="font-semibold mb-2">現在はフォールバック機能で動作中</p>
-                                <p>OpenAI APIキーを設定すると、よりパーソナライズされたコンテンツ生成が可能になります。</p>
-                                <p class="mt-2">APIキーなしでも、事前に準備された高品質なテンプレートベースでコンテンツを生成できます。</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+
         </main>
 
         <!-- 使い方ガイドモーダル -->
