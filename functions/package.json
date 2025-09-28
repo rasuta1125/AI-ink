@@ -1,0 +1,7 @@
+{
+  "name": "ai-ink-functions",
+  "type": "module",
+  "dependencies": {
+    "openai": "^4.63.0"
+  }
+}
