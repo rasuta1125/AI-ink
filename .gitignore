@@ -26,6 +26,11 @@ logs/
 *.tar.gz
 *.zip
 
+# Core dumps and debug files
+core.*
+debug.*
+test_*.html
+
 # Wrangler
 .wrangler/
 dist/
