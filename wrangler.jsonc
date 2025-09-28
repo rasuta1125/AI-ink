@@ -2,9 +2,9 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "ai-ink",
   "compatibility_date": "2025-09-28",
-  "pages_build_output_dir": "./dist",
+  "pages_build_output_dir": "dist",
   "build": {
-    "command": "npm run build"
+    "command": "npm ci && npm run build"
   },
   "compatibility_flags": [
     "nodejs_compat"
