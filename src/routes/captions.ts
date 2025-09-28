@@ -43,7 +43,7 @@ captionRoutes.post('/', async (c) => {
 
     // プロンプト作成
     const prompt = `
-あなたはSNSコピーライター。日本語で回答。
+あなたはSNSコピーライター。日本語で回答し、結果をJSON形式で出力してください。
 目的:${goal} 業種:${industry} トーン:${tone} トピック:${topic} 長さ:${length}
 
 要件:

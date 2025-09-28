@@ -17,7 +17,7 @@ app.use(renderer)
 // API ルート
 app.route('/api/hooks', hookRoutes)
 app.route('/api/ctas', ctaRoutes)
-app.route('/api/hashtags6', hashtagRoutes)
+app.route('/api/hashtags', hashtagRoutes)
 app.route('/api/captions', captionRoutes)
 
 // メインページ
@@ -28,7 +28,7 @@ app.get('/', (c) => {
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>コピー生成AI - 今日の投稿、ここからコピペで終わり。</title>
+        <title>AIコピー生成ink - 今日の投稿、ここからコピペで終わり。</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         <script>
@@ -161,7 +161,7 @@ app.get('/', (c) => {
                     <div class="flex items-center space-x-4">
                         <h1 class="text-xl font-bold text-gray-800">
                             <i class="fas fa-magic text-primary-500 mr-2"></i>
-                            コピー生成AI
+                            AIコピー生成ink
                         </h1>
                     </div>
                     <div class="flex items-center space-x-4">
@@ -185,14 +185,14 @@ app.get('/', (c) => {
                 <div class="animate-fade-in">
                     <h1 class="text-5xl md:text-6xl font-bold mb-6 leading-tight">
                         <i class="fas fa-magic mr-4 text-accent-300 animate-pulse-soft"></i>
-                        コピー生成AI
+                        AIコピー生成ink
                     </h1>
                     <div class="space-y-3 mb-8">
                         <p class="text-2xl md:text-3xl font-semibold text-accent-100">
                             今日の投稿、ここからコピペで終わり。
                         </p>
                         <p class="text-xl md:text-2xl text-blue-100">
-                            Hook・CTA・#6。迷わない3ボタン。
+                            Hook・CTA・ハッシュタグ。迷わない3ボタン。
                         </p>
                         <p class="text-lg text-blue-200">
                             考える前に出す。言葉のショートカット。
@@ -437,7 +437,7 @@ app.get('/', (c) => {
                     <h3 class="text-xl font-bold text-gray-800 mb-3">フル本文</h3>
                     <p class="text-gray-600 text-sm mb-4 leading-relaxed">
                         <strong>完全版を3パターン</strong><br>
-                        <span class="text-xs text-gray-500">Hook→本文→CTA→#6</span>
+                        <span class="text-xs text-gray-500">Hook→本文→CTA→ハッシュタグ</span>
                     </p>
                     <div class="text-xs text-gray-600 mb-4 p-3 bg-blue-50 rounded-lg">
                         <div class="flex items-center mb-1">
@@ -1092,7 +1092,7 @@ app.get('/', (c) => {
                             </div>
                             <h3 class="text-lg font-semibold text-gray-800">フル本文（3パターン）</h3>
                             <div class="ml-auto bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-medium">
-                                Hook→本文→CTA→#6
+                                Hook→本文→CTA→ハッシュタグ
                             </div>
                         </div>
                         <div class="space-y-6">
@@ -1190,7 +1190,7 @@ app.get('/', (c) => {
                 if (!validateForm()) return;
                 
                 const data = getFormData();
-                const result = await callAPI('hashtags6', {
+                const result = await callAPI('hashtags', {
                     industry: data.industry,
                     topic: data.topic
                 });

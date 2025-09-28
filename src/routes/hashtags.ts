@@ -32,7 +32,7 @@ hashtagRoutes.post('/', async (c) => {
 
     // プロンプト作成
     const prompt = `
-あなたはSNSのハッシュタグ選定アシスタント。日本語で回答。
+あなたはSNSのハッシュタグ選定アシスタント。日本語で回答し、結果をJSON形式で出力してください。
 業種:${industry} トピック:${topic}
 
 要件:

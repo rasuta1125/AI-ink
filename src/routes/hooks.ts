@@ -31,7 +31,7 @@ hookRoutes.post('/', async (c) => {
 
     // プロンプト作成
     const prompt = `
-あなたはSNSコピーライター。日本語で回答。
+あなたはSNSコピーライター。日本語で回答し、結果をJSON形式で出力してください。
 目的:${goal} 業種:${industry} トーン:${tone} トピック:${topic}
 
 要件:
@@ -40,7 +40,7 @@ hookRoutes.post('/', async (c) => {
 - 誇大表現や断定的効果保証は使わない。
 - トーンに応じた自然な日本語で。
 
-出力形式: {"hooks":["h1","h2","h3","h4","h5"]}
+JSON出力形式: {"hooks":["h1","h2","h3","h4","h5"]}
     `.trim()
 
     try {

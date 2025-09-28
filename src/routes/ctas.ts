@@ -31,7 +31,7 @@ ctaRoutes.post('/', async (c) => {
 
     // プロンプト作成
     const prompt = `
-あなたはSNSコピーライター。日本語で回答。
+あなたはSNSコピーライター。日本語で回答し、結果をJSON形式で出力してください。
 目的:${goal} 導線:${path} 期限:${deadline} トピック:${topic}
 
 要件:

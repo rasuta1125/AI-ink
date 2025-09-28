@@ -1,5 +1,5 @@
 {
-  "name": "webapp",
+  "name": "ai-ink",
   "type": "module",
   "scripts": {
     "dev": "vite",
