@@ -1,9 +1,11 @@
 // Hook生成API - Firebase認証付き
 import { authenticateRequest } from "../_lib/auth";
+import { getUserUsage, incrementUsage, checkRateLimit } from "../_lib/usage";
 
 export interface Env {
   FIREBASE_PROJECT_ID: string;
   OPENAI_API_KEY: string;
+  USER_USAGE_KV: KVNamespace;
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
@@ -24,6 +26,41 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     // Firebase IDトークン検証
     const user = await authenticateRequest(request, env.FIREBASE_PROJECT_ID);
     console.log('認証済みユーザー:', user.email);
+
+    // KV利用状況管理（KVが設定されている場合のみ）
+    if (env.USER_USAGE_KV) {
+      // レート制限チェック
+      const rateAllowed = await checkRateLimit(env.USER_USAGE_KV, user.sub, 'hooks');
+      if (!rateAllowed) {
+        return new Response(JSON.stringify({ error: 'レート制限：5秒後に再試行してください' }), {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        });
+      }
+
+      // 利用上限チェック
+      const userUsage = await getUserUsage(env.USER_USAGE_KV, user.sub);
+      if (userUsage.remaining <= 0) {
+        return new Response(JSON.stringify({ 
+          error: '利用上限に達しました',
+          plan: userUsage.plan,
+          limit: userUsage.limit,
+          used: userUsage.used
+        }), {
+          status: 402,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        });
+      }
+
+      // 利用回数を増加
+      await incrementUsage(env.USER_USAGE_KV, user.sub);
+    }
 
     // リクエストボディ取得
     const body = await request.json() as {

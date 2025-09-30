@@ -163,6 +163,17 @@ app.get('/', (c) => {
                         </h1>
                     </div>
                     <div class="flex items-center space-x-4">
+                        <!-- 残回数バッジ -->
+                        <div id="usageBadge" class="hidden">
+                            <div class="flex items-center bg-gradient-to-r from-blue-50 to-purple-50 px-4 py-2 rounded-full border border-blue-200">
+                                <i class="fas fa-chart-line text-blue-600 mr-2 text-sm"></i>
+                                <span class="text-sm font-medium text-gray-700">
+                                    残 <span id="remainingCount" class="font-bold text-blue-600">--</span> / <span id="totalLimit" class="text-gray-500">--</span>
+                                </span>
+                                <span id="planBadge" class="ml-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">FREE</span>
+                            </div>
+                        </div>
+                        
                         <a href="/reply-bot" class="text-primary-600 hover:text-primary-700 font-medium text-sm flex items-center transition-colors">
                             <i class="fas fa-robot mr-2"></i>
                             返信ボット
@@ -1182,12 +1193,22 @@ app.get('/', (c) => {
                             'Content-Type': 'application/json'
                         }
                     });
+                    // API呼び出し成功時に利用状況を更新
+                    loadUserUsage();
                     return response.data;
                 } catch (error) {
                     console.error(\`API Error (\${endpoint}):\`, error);
                     
                     if (error.response?.status === 401) {
                         showError('認証エラーです。再度ログインしてください。');
+                        return null;
+                    } else if (error.response?.status === 402) {
+                        // 利用上限超過時の処理
+                        const errorData = error.response.data;
+                        showUpgradePlanModal(errorData);
+                        return null;
+                    } else if (error.response?.status === 429) {
+                        showError('リクエストが多すぎます。5秒後に再試行してください。');
                         return null;
                     }
                     
@@ -1238,7 +1259,7 @@ app.get('/', (c) => {
                 if (!validateForm()) return;
                 
                 const data = getFormData();
-                const result = await callAPI('hashtags', {
+                const result = await callAPI('hashtags6', {
                     industry: data.industry,
                     topic: data.topic
                 });
@@ -1295,11 +1316,19 @@ app.get('/', (c) => {
 
             // Firebase認証状態管理
             let currentUser = null;
+            let userUsage = null;
             
             // 認証状態の変化を監視
             window.firebaseAuth.onAuthStateChanged((user) => {
                 currentUser = user;
                 updateAuthUI(user);
+                if (user) {
+                    // ログイン後に利用状況を取得
+                    loadUserUsage();
+                } else {
+                    // ログアウト時に利用状況をクリア
+                    hideUsageBadge();
+                }
             });
             
             function updateAuthUI(user) {
@@ -1411,11 +1440,182 @@ app.get('/', (c) => {
                 }
             }
             
+            // 利用状況取得
+            async function loadUserUsage() {
+                try {
+                    if (!currentUser) return;
+                    
+                    const idToken = await window.firebaseAuth.getIdToken();
+                    const response = await axios.get('/api/me', {
+                        headers: {
+                            'Authorization': \`Bearer \${idToken}\`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    userUsage = response.data;
+                    updateUsageBadge(userUsage);
+                } catch (error) {
+                    console.error('利用状況の取得に失敗:', error);
+                    // エラー時はバッジを非表示
+                    hideUsageBadge();
+                }
+            }
+            
+            // 利用状況バッジ更新
+            function updateUsageBadge(usage) {
+                if (!usage) {
+                    hideUsageBadge();
+                    return;
+                }
+                
+                const badge = document.getElementById('usageBadge');
+                const remainingCount = document.getElementById('remainingCount');
+                const totalLimit = document.getElementById('totalLimit');
+                const planBadge = document.getElementById('planBadge');
+                
+                if (badge && remainingCount && totalLimit && planBadge) {
+                    remainingCount.textContent = usage.remaining;
+                    totalLimit.textContent = usage.limit;
+                    
+                    // プランバッジの色とテキスト
+                    planBadge.textContent = usage.plan.toUpperCase();
+                    planBadge.className = 'ml-2 px-2 py-1 text-xs font-medium rounded-full';
+                    
+                    if (usage.plan === 'free') {
+                        planBadge.className += ' bg-gray-100 text-gray-700';
+                    } else if (usage.plan === 'light') {
+                        planBadge.className += ' bg-blue-100 text-blue-700';
+                    } else if (usage.plan === 'premium') {
+                        planBadge.className += ' bg-purple-100 text-purple-700';
+                    }
+                    
+                    // 残回数に応じて色変更
+                    const usageRate = usage.used / usage.limit;
+                    if (usageRate >= 0.9) {
+                        remainingCount.className = 'font-bold text-red-600';
+                    } else if (usageRate >= 0.7) {
+                        remainingCount.className = 'font-bold text-orange-600';
+                    } else {
+                        remainingCount.className = 'font-bold text-blue-600';
+                    }
+                    
+                    badge.classList.remove('hidden');
+                }
+            }
+            
+            // 利用状況バッジ非表示
+            function hideUsageBadge() {
+                const badge = document.getElementById('usageBadge');
+                if (badge) {
+                    badge.classList.add('hidden');
+                }
+            }
+            
+            // アップグレードプランモーダル表示
+            function showUpgradePlanModal(errorData) {
+                // 既存のモーダルがあれば削除
+                const existingModal = document.getElementById('upgradePlanModal');
+                if (existingModal) {
+                    existingModal.remove();
+                }
+                
+                const modal = document.createElement('div');
+                modal.id = 'upgradePlanModal';
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4';
+                modal.innerHTML = \`
+                    <div class="glass-effect rounded-2xl max-w-md w-full p-8">
+                        <div class="text-center mb-8">
+                            <div class="bg-red-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                                <i class="fas fa-exclamation-triangle text-2xl text-red-600"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800 mb-2">利用上限に達しました</h2>
+                            <p class="text-gray-600 mb-4">
+                                \${errorData.plan === 'free' ? 'Free' : 'Light'}プランの月間利用回数（\${errorData.limit}回）を超過しました
+                            </p>
+                            <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                                <div class="text-sm text-gray-600">
+                                    <div>利用回数: \${errorData.used} / \${errorData.limit}</div>
+                                    <div>リセット日: 翌月1日</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        \${errorData.plan === 'free' ? \`
+                            <div class="space-y-4">
+                                <div class="border border-blue-200 bg-blue-50 rounded-lg p-6">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <h3 class="text-lg font-semibold text-blue-800">Lightプラン</h3>
+                                        <div class="text-right">
+                                            <div class="text-2xl font-bold text-blue-600">¥980</div>
+                                            <div class="text-sm text-blue-600">/月</div>
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2 text-sm text-blue-700">
+                                        <div class="flex items-center">
+                                            <i class="fas fa-check text-blue-600 mr-2"></i>
+                                            月間100回まで利用可能
+                                        </div>
+                                        <div class="flex items-center">
+                                            <i class="fas fa-check text-blue-600 mr-2"></i>
+                                            全機能フルアクセス
+                                        </div>
+                                        <div class="flex items-center">
+                                            <i class="fas fa-check text-blue-600 mr-2"></i>
+                                            優先サポート
+                                        </div>
+                                    </div>
+                                    <button onclick="upgradeToLight()" class="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                                        Lightプランにアップグレード
+                                    </button>
+                                </div>
+                                
+                                <button onclick="hideUpgradePlanModal()" class="w-full text-gray-600 hover:text-gray-800 font-medium py-2">
+                                    翌月まで待つ
+                                </button>
+                            </div>
+                        \` : \`
+                            <div class="space-y-4">
+                                <div class="text-center text-gray-600">
+                                    <p class="mb-4">Lightプランの上限に達しました。</p>
+                                    <p class="text-sm">より多くの利用が必要な場合は、Premiumプランをご検討ください。</p>
+                                </div>
+                                <button onclick="hideUpgradePlanModal()" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                                    閉じる
+                                </button>
+                            </div>
+                        \`}
+                        
+                        <button onclick="hideUpgradePlanModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                \`;
+                document.body.appendChild(modal);
+            }
+            
+            function hideUpgradePlanModal() {
+                const modal = document.getElementById('upgradePlanModal');
+                if (modal) {
+                    modal.remove();
+                }
+            }
+            
+            function upgradeToLight() {
+                // TODO: 決済システム連携（PAY.JP または LemonSqueezy）
+                alert('決済システム連携は今後実装予定です。\\n\\nお問い合わせから個別にご相談ください。');
+                hideUpgradePlanModal();
+            }
+            
             // グローバル関数として公開
             window.showLoginModal = showLoginModal;
             window.hideLoginModal = hideLoginModal;
             window.loginWithGoogle = loginWithGoogle;
             window.loginWithEmail = loginWithEmail;
+            window.loadUserUsage = loadUserUsage;
+            window.showUpgradePlanModal = showUpgradePlanModal;
+            window.hideUpgradePlanModal = hideUpgradePlanModal;
+            window.upgradeToLight = upgradeToLight;
 
             // 初回訪問者向けのヒント表示
             if (!localStorage.getItem('firstVisit')) {
