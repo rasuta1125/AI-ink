@@ -752,7 +752,15 @@ app.get('/', (c) => {
             </div>
         </div>
 
-        <!-- Firebase SDK v10 (モダン版) -->
+        <!-- Firebase SDK v8 (互換性重視) -->
+        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+        
+        <!-- Firebase設定 -->
+        <script src="/firebase-config.js"></script>
+
+        <!-- Firebase SDK v10 (モダン版) - 将来の移行用に保持 -->
         <script type="module">
           // Firebase設定
           import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
@@ -779,11 +787,11 @@ app.get('/', (c) => {
           const auth = getAuth(app);
           const googleProvider = new GoogleAuthProvider();
 
-          // グローバルにアクセス可能にする
+          // グローバルにアクセス可能にする（v10版）
           window.firebaseAuth = {
             auth,
             signInWithEmailAndPassword: (email, password) => signInWithEmailAndPassword(auth, email, password),
-            createUserWithEmailAndPassword: (email, password) => createUserWithEmailAndPassword(auth, email, password),
+            createUserWithEmailAndPassword: (email, password) => createUserWithEmailAndPassword(auth, password),
             signInWithPopup: () => signInWithPopup(auth, googleProvider),
             signOut: () => signOut(auth),
             onAuthStateChanged: (callback) => onAuthStateChanged(auth, callback),
