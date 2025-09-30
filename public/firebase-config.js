@@ -7,17 +7,11 @@
 // import { getFirestore } from 'firebase/firestore';
 
 // Firebase設定オブジェクト
-// 注意: 実際のプロジェクトでは環境変数を使用してください
 const firebaseConfig = {
-  // TODO: Firebase コンソールからプロジェクト設定を取得して入力
-  apiKey: "your-api-key-here",
-  authDomain: "your-project.firebaseapp.com", 
-  projectId: "your-project-id",
-  storageBucket: "your-project.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "your-app-id",
-  // Firestoreを使用する場合
-  databaseURL: "https://your-project.firebaseio.com"
+  apiKey: "AlzaSyAy-IH56f2DtXPp5wXIWGaY_vIiaoVVbyuM",
+  authDomain: "aiink-231e7.firebaseapp.com",
+  projectId: "aiink-231e7",
+  appId: "1:198276519701:web:c5e8f7a8b9d1e2f3g4h5i6j7"
 };
 
 // Firebase初期化
