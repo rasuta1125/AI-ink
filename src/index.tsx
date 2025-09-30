@@ -4,6 +4,7 @@ import { hookRoutes } from './routes/hooks'
 import { ctaRoutes } from './routes/ctas'
 import { hashtagRoutes } from './routes/hashtags'
 import { captionRoutes } from './routes/captions'
+import { repliesRoutes } from './routes/replies'
 
 const app = new Hono()
 
@@ -15,6 +16,7 @@ app.route('/api/hooks', hookRoutes)
 app.route('/api/ctas', ctaRoutes)
 app.route('/api/hashtags', hashtagRoutes)
 app.route('/api/captions', captionRoutes)
+app.route('/api/replies', repliesRoutes)
 
 // メインページ
 app.get('/', (c) => {
@@ -739,6 +741,45 @@ app.get('/', (c) => {
             </div>
         </div>
 
+        <!-- Firebase SDK v10 (モダン版) -->
+        <script type="module">
+          // Firebase設定
+          import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+          import { 
+            getAuth, 
+            signInWithEmailAndPassword, 
+            createUserWithEmailAndPassword,
+            signInWithPopup,
+            GoogleAuthProvider,
+            onAuthStateChanged, 
+            getIdToken,
+            signOut 
+          } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+          // Firebase設定
+          const firebaseConfig = {
+            apiKey: "AlzaSyAy-IH56f2DtXPp5wXIWGaY_vIiaoVVbyuM",
+            authDomain: "aiink-231e7.firebaseapp.com",
+            projectId: "aiink-231e7",
+            appId: "1:198276519701:web:xxxxxxxx"
+          };
+
+          const app = initializeApp(firebaseConfig);
+          const auth = getAuth(app);
+          const googleProvider = new GoogleAuthProvider();
+
+          // グローバルにアクセス可能にする
+          window.firebaseAuth = {
+            auth,
+            signInWithEmailAndPassword: (email, password) => signInWithEmailAndPassword(auth, email, password),
+            createUserWithEmailAndPassword: (email, password) => createUserWithEmailAndPassword(auth, email, password),
+            signInWithPopup: () => signInWithPopup(auth, googleProvider),
+            signOut: () => signOut(auth),
+            onAuthStateChanged: (callback) => onAuthStateChanged(auth, callback),
+            getIdToken: () => getIdToken(auth.currentUser, true)
+          };
+        </script>
+
         <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
         <script>
             // グローバル状態
@@ -1114,14 +1155,41 @@ app.get('/', (c) => {
                 }
             }
 
-            // API呼び出し
+            // Firebase認証付きAPI呼び出し
             async function callAPI(endpoint, data) {
                 try {
                     showLoading();
-                    const response = await axios.post(\`/api/\${endpoint}\`, data);
+                    
+                    // 認証チェック
+                    if (!currentUser) {
+                        hideLoading();
+                        showLoginModal();
+                        return null;
+                    }
+                    
+                    // Firebase IDトークンを取得
+                    const idToken = await window.firebaseAuth.getIdToken();
+                    if (!idToken) {
+                        hideLoading();
+                        showError('認証が必要です。ログインしてください。');
+                        showLoginModal();
+                        return null;
+                    }
+                    
+                    const response = await axios.post(\`/api/\${endpoint}\`, data, {
+                        headers: {
+                            'Authorization': \`Bearer \${idToken}\`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
                     return response.data;
                 } catch (error) {
                     console.error(\`API Error (\${endpoint}):\`, error);
+                    
+                    if (error.response?.status === 401) {
+                        showError('認証エラーです。再度ログインしてください。');
+                        return null;
+                    }
                     
                     const message = error.response?.data?.message || error.message || 'エラーが発生しました';
                     showError(\`エラー: \${message}\`);
@@ -1225,6 +1293,130 @@ app.get('/', (c) => {
             
             elements.topicInput.placeholder = \`例：\${placeholders[Math.floor(Math.random() * placeholders.length)]}\`;
 
+            // Firebase認証状態管理
+            let currentUser = null;
+            
+            // 認証状態の変化を監視
+            window.firebaseAuth.onAuthStateChanged((user) => {
+                currentUser = user;
+                updateAuthUI(user);
+            });
+            
+            function updateAuthUI(user) {
+                const loginSection = document.querySelector('.auth-section');
+                if (!loginSection) {
+                    // 認証UIが存在しない場合は作成
+                    createAuthUI();
+                }
+                
+                if (user) {
+                    // ログイン済み
+                    console.log('ログイン済みユーザー:', user.email);
+                    hideLoginModal();
+                } else {
+                    // 未ログイン - 最初のAPI呼び出し時にログイン促す
+                    console.log('未ログインユーザー');
+                }
+            }
+            
+            function createAuthUI() {
+                // 認証モーダルをページに追加
+                const authModal = document.createElement('div');
+                authModal.id = 'authModal';
+                authModal.className = 'hidden fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4';
+                authModal.innerHTML = \`
+                    <div class="glass-effect rounded-2xl max-w-md w-full p-8">
+                        <div class="text-center mb-8">
+                            <div class="bg-primary-100 p-4 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                                <i class="fas fa-magic text-2xl text-primary-600"></i>
+                            </div>
+                            <h2 class="text-2xl font-bold text-gray-800 mb-2">ログインが必要です</h2>
+                            <p class="text-gray-600">AIコピー生成機能を使用するには、ログインしてください</p>
+                        </div>
+
+                        <div class="space-y-4">
+                            <button onclick="loginWithGoogle()" class="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center">
+                                <i class="fab fa-google mr-2"></i>
+                                Googleでログイン
+                            </button>
+                            
+                            <div class="text-center text-gray-500 text-sm">または</div>
+                            
+                            <form onsubmit="loginWithEmail(event)" class="space-y-4">
+                                <input type="email" id="authEmail" placeholder="メールアドレス" required
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                <input type="password" id="authPassword" placeholder="パスワード" required
+                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                                <button type="submit" class="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-3 px-4 rounded-lg transition-colors">
+                                    <i class="fas fa-sign-in-alt mr-2"></i>
+                                    ログイン
+                                </button>
+                            </form>
+                            
+                            <div class="text-center">
+                                <button onclick="toggleSignupMode()" class="text-primary-500 hover:text-primary-600 text-sm font-medium">
+                                    新規アカウント作成
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <button onclick="hideLoginModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                \`;
+                document.body.appendChild(authModal);
+            }
+            
+            // ログインモーダル表示/非表示
+            function showLoginModal() {
+                const modal = document.getElementById('authModal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                }
+            }
+            
+            function hideLoginModal() {
+                const modal = document.getElementById('authModal');
+                if (modal) {
+                    modal.classList.add('hidden');
+                }
+            }
+            
+            // Googleログイン
+            async function loginWithGoogle() {
+                try {
+                    const result = await window.firebaseAuth.signInWithPopup();
+                    console.log('Googleログイン成功:', result.user.email);
+                    hideLoginModal();
+                } catch (error) {
+                    console.error('Googleログインエラー:', error);
+                    alert('Googleログインに失敗しました: ' + error.message);
+                }
+            }
+            
+            // メール/パスワードログイン
+            async function loginWithEmail(event) {
+                event.preventDefault();
+                const email = document.getElementById('authEmail').value;
+                const password = document.getElementById('authPassword').value;
+                
+                try {
+                    const result = await window.firebaseAuth.signInWithEmailAndPassword(email, password);
+                    console.log('ログイン成功:', result.user.email);
+                    hideLoginModal();
+                } catch (error) {
+                    console.error('ログインエラー:', error);
+                    alert('ログインに失敗しました: ' + error.message);
+                }
+            }
+            
+            // グローバル関数として公開
+            window.showLoginModal = showLoginModal;
+            window.hideLoginModal = hideLoginModal;
+            window.loginWithGoogle = loginWithGoogle;
+            window.loginWithEmail = loginWithEmail;
+
             // 初回訪問者向けのヒント表示
             if (!localStorage.getItem('firstVisit')) {
                 setTimeout(() => {
@@ -1250,6 +1442,14 @@ app.get('/reply-bot', (c) => {
         <title>返信ボット - お客様対応を効率化</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        
+        <!-- Firebase SDK v8 (互換性重視) -->
+        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+        
+        <!-- Firebase設定 -->
+        <script src="/firebase-config.js"></script>
         <script>
           tailwind.config = {
             theme: {
@@ -1802,285 +2002,8 @@ app.get('/reply-bot', (c) => {
             </div>
         </div>
 
+        <!-- Firebase + 返信ボット専用JavaScript -->
         <script src="/reply-bot.js"></script>
-                
-                // 新規登録フロー
-                document.getElementById('signupForm').addEventListener('submit', handleSignup);
-                
-                // タブ切り替え
-                document.getElementById('replyTab').addEventListener('click', () => showTab('reply'));
-                document.getElementById('knowledgeTab').addEventListener('click', () => showTab('knowledge'));
-                
-                // 返信生成
-                document.getElementById('inquiryText').addEventListener('input', validateGenerateBtn);
-                document.getElementById('generateBtn').addEventListener('click', generateReplies);
-                document.getElementById('goToKnowledge').addEventListener('click', () => showTab('knowledge'));
-                
-                // ナレッジフォーム
-                document.getElementById('knowledgeForm').addEventListener('submit', saveKnowledge);
-            }
-
-            async function handleLogin(e) {
-                e.preventDefault();
-                const email = document.getElementById('email').value;
-                const user = { id: 'replybot_' + Date.now(), email, name: email.split('@')[0] };
-                
-                currentUser = user;
-                localStorage.setItem('replyBotUser', JSON.stringify(user));
-                showMainApp();
-            }
-
-            function handleLogout() {
-                currentUser = null;
-                userKnowledge = null;
-                localStorage.removeItem('replyBotUser');
-                localStorage.removeItem('replyBotKnowledge');
-                showLoginScreen();
-            }
-
-            function showLoginScreen() {
-                document.getElementById('loginScreen').classList.remove('hidden');
-                document.getElementById('signupScreen').classList.add('hidden');
-                document.getElementById('mainApp').classList.add('hidden');
-                document.getElementById('loginButtons').classList.remove('hidden');
-                document.getElementById('userButtons').classList.add('hidden');
-            }
-
-            function showMainApp() {
-                document.getElementById('loginScreen').classList.add('hidden');
-                document.getElementById('mainApp').classList.remove('hidden');
-                document.getElementById('loginButtons').classList.add('hidden');
-                document.getElementById('userButtons').classList.remove('hidden');
-                document.getElementById('userName').textContent = currentUser?.name || '';
-                showTab('reply');
-            }
-
-            function showTab(tab) {
-                document.querySelectorAll('[id$="Tab"]').forEach(btn => {
-                    btn.classList.remove('border-primary-500', 'text-primary-600');
-                    btn.classList.add('border-transparent', 'text-gray-500');
-                });
-                
-                document.getElementById('replyPage').classList.add('hidden');
-                document.getElementById('knowledgePage').classList.add('hidden');
-
-                if (tab === 'reply') {
-                    document.getElementById('replyTab').classList.remove('border-transparent', 'text-gray-500');
-                    document.getElementById('replyTab').classList.add('border-primary-500', 'text-primary-600');
-                    document.getElementById('replyPage').classList.remove('hidden');
-                } else if (tab === 'knowledge') {
-                    document.getElementById('knowledgeTab').classList.remove('border-transparent', 'text-gray-500');
-                    document.getElementById('knowledgeTab').classList.add('border-primary-500', 'text-primary-600');
-                    document.getElementById('knowledgePage').classList.remove('hidden');
-                }
-            }
-
-            // 新規登録関連関数
-            function showSignupScreen() {
-                document.getElementById('loginScreen').classList.add('hidden');
-                document.getElementById('signupScreen').classList.remove('hidden');
-            }
-            
-            async function handleSignup(e) {
-                e.preventDefault();
-                
-                // バリデーション
-                const name = document.getElementById('signupName').value;
-                const email = document.getElementById('signupEmail').value;
-                const password = document.getElementById('signupPassword').value;
-                const passwordConfirm = document.getElementById('signupPasswordConfirm').value;
-                
-                if (!name || !email || !password || !passwordConfirm) {
-                    alert('全ての項目を入力してください。');
-                    return;
-                }
-                
-                if (password !== passwordConfirm) {
-                    alert('パスワードが一致しません。');
-                    return;
-                }
-                
-                if (password.length < 8) {
-                    alert('パスワードは8文字以上で入力してください。');
-                    return;
-                }
-                
-                // ユーザー作成（基本情報のみ）
-                const userData = {
-                    id: 'replybot_' + Date.now(),
-                    name: name,
-                    email: email,
-                    createdAt: new Date().toISOString()
-                };
-                
-                // 保存
-                currentUser = userData;
-                userKnowledge = null; // ナレッジは初期化
-                localStorage.setItem('replyBotUser', JSON.stringify(userData));
-                
-                alert('アカウント作成が完了しました！\n\n「ナレッジ登録」タブで事業情報を入力して、返信機能を活用してください。');
-                
-                // メインアプリに遷移（ナレッジタブを開く）
-                document.getElementById('signupScreen').classList.add('hidden');
-                showMainApp();
-                showTab('knowledge'); // ナレッジタブを開く
-            }
-            
-            async function loadUserKnowledge() {
-                const saved = localStorage.getItem('replyBotKnowledge_' + currentUser.id);
-                if (saved) {
-                    userKnowledge = JSON.parse(saved);
-                    // フォームにデータを入力
-                    populateKnowledgeForm();
-                }
-            }
-            
-            function populateKnowledgeForm() {
-                if (!userKnowledge) return;
-                
-                if (userKnowledge.businessType) document.getElementById('businessType').value = userKnowledge.businessType;
-                if (userKnowledge.businessName) document.getElementById('businessName').value = userKnowledge.businessName;
-                if (userKnowledge.websiteUrl) document.getElementById('websiteUrl').value = userKnowledge.websiteUrl;
-                if (userKnowledge.services || userKnowledge.pricing) {
-                    document.getElementById('pricing').value = userKnowledge.services || userKnowledge.pricing;
-                }
-                if (userKnowledge.businessHours) document.getElementById('businessHours').value = userKnowledge.businessHours;
-                if (userKnowledge.reservationInfo) document.getElementById('reservationInfo').value = userKnowledge.reservationInfo;
-                if (userKnowledge.features) document.getElementById('features').value = userKnowledge.features;
-            }
-
-            async function saveKnowledge(e) {
-                e.preventDefault();
-                
-                const knowledge = {
-                    businessType: document.getElementById('businessType').value,
-                    businessName: document.getElementById('businessName').value,
-                    websiteUrl: document.getElementById('websiteUrl').value,
-                    services: document.getElementById('pricing').value,
-                    businessHours: document.getElementById('businessHours').value,
-                    reservationInfo: document.getElementById('reservationInfo').value,
-                    features: document.getElementById('features').value,
-                    updatedAt: new Date().toISOString()
-                };
-                
-                userKnowledge = knowledge;
-                localStorage.setItem('replyBotKnowledge_' + currentUser.id, JSON.stringify(knowledge));
-                
-                // 成功メッセージを表示
-                const btn = e.target;
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="fas fa-check mr-3"></i>保存完了！';
-                btn.classList.add('bg-green-500');
-                
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.classList.remove('bg-green-500');
-                }, 2000);
-                
-                showTab('reply');
-            }
-
-            function validateGenerateBtn() {
-                const hasText = document.getElementById('inquiryText').value.trim().length > 0;
-                document.getElementById('generateBtn').disabled = !hasText;
-            }
-
-            async function generateReplies() {
-                if (!userKnowledge || !userKnowledge.businessType) {
-                    document.getElementById('noKnowledgeWarning').classList.remove('hidden');
-                    return;
-                }
-
-                document.getElementById('noKnowledgeWarning').classList.add('hidden');
-                document.getElementById('loading').classList.remove('hidden');
-                
-                // 簡易デモ実装
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
-                const replies = [
-                    {
-                        style: "丁寧",
-                        text: "お問い合わせいただきありがとうございます。\n\nサービスについてのご質問ですね。\n料金につきましては、詳細をお伝えいたします。\n\nお気軽にお問い合わせください。\n\nよろしくお願いいたします。",
-                        needs: [],
-                        refs: []
-                    },
-                    {
-                        style: "カジュアル", 
-                        text: "ありがとうございます！\n\nサービスのお問い合わせですね。\n料金について詳しくお答えします。\n\nお気軽にお問い合わせくださいね。",
-                        needs: [],
-                        refs: []
-                    },
-                    {
-                        style: "短文",
-                        text: "ありがとうございます。\n料金についてご案内いたします。\nお電話でお問い合わせください。",
-                        needs: [],
-                        refs: []
-                    }
-                ];
-                
-                displayReplies(replies);
-                document.getElementById('loading').classList.add('hidden');
-            }
-
-            function displayReplies(replies) {
-                const container = document.getElementById('repliesContainer');
-                container.innerHTML = '';
-                replyTexts = replies.map(reply => reply.text); // Store texts for copying
-                
-                replies.forEach((reply, index) => {
-                    const div = document.createElement('div');
-                    div.className = 'bg-white border border-gray-200 rounded-lg p-6';
-                    div.innerHTML = 
-                        '<div class="flex justify-between items-center mb-4">' +
-                            '<h4 class="font-semibold text-gray-800">' +
-                                '<i class="fas fa-comment mr-2 text-primary-500"></i>' +
-                                reply.style +
-                            '</h4>' +
-                            '<button onclick="copyReplyToClipboard(' + index + ')" class="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded text-sm font-medium">' +
-                                '<i class="fas fa-copy mr-1"></i>コピー' +
-                            '</button>' +
-                        '</div>' +
-                        '<div class="bg-gray-50 p-4 rounded-lg">' +
-                            '<pre class="whitespace-pre-wrap text-sm text-gray-800">' + reply.text + '</pre>' +
-                        '</div>';
-                    container.appendChild(div);
-                });
-                
-                document.getElementById('resultsArea').classList.remove('hidden');
-            }
-
-            let replyTexts = []; // Store reply texts globally
-            
-            function copyToClipboard(text, button) {
-                navigator.clipboard.writeText(text).then(() => {
-                    button.innerHTML = '<i class="fas fa-check mr-1"></i>コピー済み';
-                    button.classList.add('bg-green-500');
-                    setTimeout(() => {
-                        button.innerHTML = '<i class="fas fa-copy mr-1"></i>コピー';
-                        button.classList.remove('bg-green-500');
-                    }, 2000);
-                });
-            }
-            
-            function copyReplyToClipboard(index) {
-                if (replyTexts[index]) {
-                    navigator.clipboard.writeText(replyTexts[index]).then(() => {
-                        const button = event.target.closest('button');
-                        if (button) {
-                            const originalHTML = button.innerHTML;
-                            button.innerHTML = '<i class="fas fa-check mr-1"></i>コピー済み';
-                            button.classList.add('bg-green-500');
-                            setTimeout(() => {
-                                button.innerHTML = originalHTML;
-                                button.classList.remove('bg-green-500');
-                            }, 2000);
-                        }
-                    });
-                }
-            }
-
-            // 初期化実行 (DOMが完全に読み込まれた後)
-            document.addEventListener('DOMContentLoaded', init);
         </script>
     </body>
     </html>`)
