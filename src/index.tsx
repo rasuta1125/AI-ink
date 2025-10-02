@@ -1651,22 +1651,19 @@ app.get('/reply-bot', (c) => {
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         
-        <!-- Firebase SDKを読み込みます -->
+        <!-- Firebase SDKを環境変数から読み込み -->
         <script type="module">
-          // --------------------------------------------------------------------
-          // ▼▼▼ Firebase設定情報 ▼▼▼
-          // --------------------------------------------------------------------
+          // 環境変数からFirebase設定を取得
           const firebaseConfig = {
-            apiKey: "AlzaSyAy-IH56f2DtXPp5wXIWGaY_vIiaoVVbyuM",
-            authDomain: "aiink-231e7.firebaseapp.com",
-            projectId: "aiink-231e7",
-            appId: "1:198276519701:web:c5e8f7a8b9d1e2f3g4h5i6j7"
+            apiKey: "${c.env?.VITE_FIREBASE_API_KEY || 'AlzaSyAy-IH56f2DtXPp5wXIWGaY_vIiaoVVbyuM'}",
+            authDomain: "${c.env?.VITE_FIREBASE_AUTH_DOMAIN || 'aiink-231e7.firebaseapp.com'}",
+            projectId: "${c.env?.VITE_FIREBASE_PROJECT_ID || 'aiink-231e7'}",
+            appId: "${c.env?.VITE_FIREBASE_APP_ID || '1:198276519701:web:c5e8f7a8b9d1e2f3g4h5i6j7'}"
           };
-          // --------------------------------------------------------------------
-          // ▲▲▲ ここまで ▲▲▲
-          // --------------------------------------------------------------------
 
-          // Firebaseの機能をインポート
+          console.log('🔥 Firebase Config:', firebaseConfig);
+
+          // Firebase機能をインポート
           import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
           import { 
             getAuth,
@@ -1688,7 +1685,7 @@ app.get('/reply-bot', (c) => {
           const auth = getAuth(app);
           const db = getFirestore(app);
 
-          // これ以降のコードは、public/reply-bot.js の内容と同じです
+          // アプリケーション状態
           let currentUser = null;
           let userKnowledge = null;
 
@@ -1711,17 +1708,17 @@ app.get('/reply-bot', (c) => {
           }
 
           function setupEventListeners() {
-              document.getElementById('loginForm').addEventListener('submit', handleLogin);
-              document.getElementById('signupBtn').addEventListener('click', showSignupScreen);
-              document.getElementById('backToLogin').addEventListener('click', showLoginScreen);
-              document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-              document.getElementById('signupForm').addEventListener('submit', handleSignup);
-              document.getElementById('replyTab').addEventListener('click', () => showTab('reply'));
-              document.getElementById('knowledgeTab').addEventListener('click', () => showTab('knowledge'));
-              document.getElementById('inquiryText').addEventListener('input', validateGenerateBtn);
-              document.getElementById('generateBtn').addEventListener('click', generateReplies);
-              document.getElementById('goToKnowledge').addEventListener('click', () => showTab('knowledge'));
-              document.getElementById('knowledgeForm').addEventListener('submit', saveKnowledge);
+              document.getElementById('loginForm')?.addEventListener('submit', handleLogin);
+              document.getElementById('signupBtn')?.addEventListener('click', showSignupScreen);
+              document.getElementById('backToLogin')?.addEventListener('click', showLoginScreen);
+              document.getElementById('logoutBtn')?.addEventListener('click', handleLogout);
+              document.getElementById('signupForm')?.addEventListener('submit', handleSignup);
+              document.getElementById('replyTab')?.addEventListener('click', () => showTab('reply'));
+              document.getElementById('knowledgeTab')?.addEventListener('click', () => showTab('knowledge'));
+              document.getElementById('inquiryText')?.addEventListener('input', validateGenerateBtn);
+              document.getElementById('generateBtn')?.addEventListener('click', generateReplies);
+              document.getElementById('goToKnowledge')?.addEventListener('click', () => showTab('knowledge'));
+              document.getElementById('knowledgeForm')?.addEventListener('submit', saveKnowledge);
           }
 
           async function handleLogin(e) {
@@ -1730,33 +1727,46 @@ app.get('/reply-bot', (c) => {
               const password = document.getElementById('password').value;
               try {
                   await signInWithEmailAndPassword(auth, email, password);
-                  // onAuthStateChangedが検知して画面遷移します
+                  console.log('✅ ログイン成功');
               } catch (error) {
+                  console.error('❌ ログインエラー:', error);
                   alert("ログインに失敗しました。\\n" + error.message);
               }
           }
 
           async function handleLogout() {
-              await signOut(auth);
+              try {
+                  await signOut(auth);
+                  console.log('✅ ログアウト成功');
+              } catch (error) {
+                  console.error('❌ ログアウトエラー:', error);
+              }
           }
 
           function showLoginScreen() {
-              document.getElementById('loginScreen').classList.remove('hidden');
-              document.getElementById('signupScreen').classList.add('hidden');
-              document.getElementById('mainApp').classList.add('hidden');
+              document.getElementById('loginScreen')?.classList.remove('hidden');
+              document.getElementById('signupScreen')?.classList.add('hidden');
+              document.getElementById('mainApp')?.classList.add('hidden');
+              document.getElementById('loginButtons')?.classList.remove('hidden');
+              document.getElementById('userButtons')?.classList.add('hidden');
           }
 
           function showMainApp() {
-              document.getElementById('loginScreen').classList.add('hidden');
-              document.getElementById('signupScreen').classList.add('hidden');
-              document.getElementById('mainApp').classList.remove('hidden');
-              document.getElementById('userName').textContent = currentUser?.name || '';
+              document.getElementById('loginScreen')?.classList.add('hidden');
+              document.getElementById('signupScreen')?.classList.add('hidden');
+              document.getElementById('mainApp')?.classList.remove('hidden');
+              document.getElementById('loginButtons')?.classList.add('hidden');
+              document.getElementById('userButtons')?.classList.remove('hidden');
+              if (document.getElementById('userName')) {
+                  document.getElementById('userName').textContent = currentUser?.name || '';
+              }
               showTab('reply');
           }
           
           function showSignupScreen() {
-              document.getElementById('loginScreen').classList.add('hidden');
-              document.getElementById('signupScreen').classList.remove('hidden');
+              document.getElementById('loginScreen')?.classList.add('hidden');
+              document.getElementById('signupScreen')?.classList.remove('hidden');
+              document.getElementById('mainApp')?.classList.add('hidden');
           }
 
           async function handleSignup(e) {
@@ -1776,6 +1786,7 @@ app.get('/reply-bot', (c) => {
               }
 
               try {
+                  console.log('🔥 アカウント作成開始...');
                   const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                   const user = userCredential.user;
 
@@ -1791,10 +1802,10 @@ app.get('/reply-bot', (c) => {
                       createdAt: new Date().toISOString()
                   });
                   
+                  console.log('✅ アカウント作成成功:', user.email);
                   alert('アカウント作成が完了しました！');
-                  // onAuthStateChangedが検知して画面遷移します
               } catch (error) {
-                  console.error('Signup error:', error);
+                  console.error('❌ アカウント作成エラー:', error);
                   let errorMessage = 'アカウント作成に失敗しました。';
                   if (error.code === 'auth/email-already-in-use') {
                       errorMessage = 'このメールアドレスは既に使用されています。';
@@ -1816,21 +1827,29 @@ app.get('/reply-bot', (c) => {
                   if (docSnap.exists()) {
                       userKnowledge = docSnap.data();
                       populateKnowledgeForm();
+                      console.log('✅ ナレッジ読み込み成功');
                   }
               } catch (error) {
-                  console.error('Load knowledge error:', error);
+                  console.error('❌ ナレッジ読み込みエラー:', error);
               }
           }
           
           function populateKnowledgeForm() {
               if (!userKnowledge) return;
-              document.getElementById('businessType').value = userKnowledge.businessType || '';
-              document.getElementById('businessName').value = userKnowledge.businessName || '';
-              document.getElementById('websiteUrl').value = userKnowledge.websiteUrl || '';
-              document.getElementById('pricing').value = userKnowledge.services || userKnowledge.pricing || '';
-              document.getElementById('businessHours').value = userKnowledge.businessHours || '';
-              document.getElementById('reservationInfo').value = userKnowledge.reservationInfo || '';
-              document.getElementById('features').value = userKnowledge.features || '';
+              const fields = {
+                  'businessType': userKnowledge.businessType || '',
+                  'businessName': userKnowledge.businessName || '',
+                  'websiteUrl': userKnowledge.websiteUrl || '',
+                  'pricing': userKnowledge.services || userKnowledge.pricing || '',
+                  'businessHours': userKnowledge.businessHours || '',
+                  'reservationInfo': userKnowledge.reservationInfo || '',
+                  'features': userKnowledge.features || ''
+              };
+              
+              Object.entries(fields).forEach(([id, value]) => {
+                  const element = document.getElementById(id);
+                  if (element) element.value = value;
+              });
           }
 
           async function saveKnowledge(e) {
@@ -1841,44 +1860,50 @@ app.get('/reply-bot', (c) => {
               }
 
               const knowledgeData = {
-                  businessType: document.getElementById('businessType').value,
-                  businessName: document.getElementById('businessName').value,
-                  websiteUrl: document.getElementById('websiteUrl').value,
-                  services: document.getElementById('pricing').value,
-                  businessHours: document.getElementById('businessHours').value,
-                  reservationInfo: document.getElementById('reservationInfo').value,
-                  features: document.getElementById('features').value,
+                  businessType: document.getElementById('businessType')?.value || '',
+                  businessName: document.getElementById('businessName')?.value || '',
+                  websiteUrl: document.getElementById('websiteUrl')?.value || '',
+                  services: document.getElementById('pricing')?.value || '',
+                  businessHours: document.getElementById('businessHours')?.value || '',
+                  reservationInfo: document.getElementById('reservationInfo')?.value || '',
+                  features: document.getElementById('features')?.value || '',
                   updatedAt: new Date().toISOString()
               };
 
               try {
                   await setDoc(doc(db, "knowledge", currentUser.uid), knowledgeData);
                   userKnowledge = knowledgeData;
+                  console.log('✅ ナレッジ保存成功');
                   alert('ナレッジを保存しました！');
                   showTab('reply');
               } catch (error) {
-                  console.error('Save knowledge error:', error);
+                  console.error('❌ ナレッジ保存エラー:', error);
                   alert('保存に失敗しました。\\n' + error.message);
               }
           }
           
-          // タブ表示や返信生成などの補助関数
           function showTab(tab) {
              document.querySelectorAll('[id$="Tab"]').forEach(btn => {
                  btn.classList.remove('border-primary-500', 'text-primary-600');
                  btn.classList.add('border-transparent', 'text-gray-500');
              });
-             document.getElementById('replyPage').classList.add('hidden');
-             document.getElementById('knowledgePage').classList.add('hidden');
+             document.getElementById('replyPage')?.classList.add('hidden');
+             document.getElementById('knowledgePage')?.classList.add('hidden');
 
              if (tab === 'reply') {
-                 document.getElementById('replyTab').classList.remove('border-transparent', 'text-gray-500');
-                 document.getElementById('replyTab').classList.add('border-primary-500', 'text-primary-600');
-                 document.getElementById('replyPage').classList.remove('hidden');
+                 const replyTab = document.getElementById('replyTab');
+                 if (replyTab) {
+                     replyTab.classList.remove('border-transparent', 'text-gray-500');
+                     replyTab.classList.add('border-primary-500', 'text-primary-600');
+                 }
+                 document.getElementById('replyPage')?.classList.remove('hidden');
              } else if (tab === 'knowledge') {
-                 document.getElementById('knowledgeTab').classList.remove('border-transparent', 'text-gray-500');
-                 document.getElementById('knowledgeTab').classList.add('border-primary-500', 'text-primary-600');
-                 document.getElementById('knowledgePage').classList.remove('hidden');
+                 const knowledgeTab = document.getElementById('knowledgeTab');
+                 if (knowledgeTab) {
+                     knowledgeTab.classList.remove('border-transparent', 'text-gray-500');
+                     knowledgeTab.classList.add('border-primary-500', 'text-primary-600');
+                 }
+                 document.getElementById('knowledgePage')?.classList.remove('hidden');
              }
           }
           
@@ -1891,10 +1916,10 @@ app.get('/reply-bot', (c) => {
           }
           
           async function generateReplies() {
-            // (この部分は後ほどAPI連携に修正します)
             alert('返信生成機能は現在開発中です。');
           }
 
+          // 初期化
           document.addEventListener('DOMContentLoaded', init);
         </script>
 
