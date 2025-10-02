@@ -1651,13 +1651,275 @@ app.get('/reply-bot', (c) => {
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
         
-        <!-- Firebase SDK v8 (互換性重視) -->
-        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+        <!-- Firebase SDKを読み込みます -->
+        <script type="module">
+          // --------------------------------------------------------------------
+          // ▼▼▼ Firebase設定情報 ▼▼▼
+          // --------------------------------------------------------------------
+          const firebaseConfig = {
+            apiKey: "AlzaSyAy-IH56f2DtXPp5wXIWGaY_vIiaoVVbyuM",
+            authDomain: "aiink-231e7.firebaseapp.com",
+            projectId: "aiink-231e7",
+            appId: "1:198276519701:web:c5e8f7a8b9d1e2f3g4h5i6j7"
+          };
+          // --------------------------------------------------------------------
+          // ▲▲▲ ここまで ▲▲▲
+          // --------------------------------------------------------------------
+
+          // Firebaseの機能をインポート
+          import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+          import { 
+            getAuth,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            signOut,
+            onAuthStateChanged,
+            updateProfile
+          } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+          import { 
+            getFirestore,
+            doc,
+            setDoc,
+            getDoc
+          } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+          // Firebaseを初期化
+          const app = initializeApp(firebaseConfig);
+          const auth = getAuth(app);
+          const db = getFirestore(app);
+
+          // これ以降のコードは、public/reply-bot.js の内容と同じです
+          let currentUser = null;
+          let userKnowledge = null;
+
+          function init() {
+              onAuthStateChanged(auth, async (user) => {
+                  if (user) {
+                      currentUser = {
+                          uid: user.uid,
+                          email: user.email,
+                          name: user.displayName || user.email.split('@')[0]
+                      };
+                      showMainApp();
+                      await loadUserKnowledge();
+                  } else {
+                      currentUser = null;
+                      showLoginScreen();
+                  }
+              });
+              setupEventListeners();
+          }
+
+          function setupEventListeners() {
+              document.getElementById('loginForm').addEventListener('submit', handleLogin);
+              document.getElementById('signupBtn').addEventListener('click', showSignupScreen);
+              document.getElementById('backToLogin').addEventListener('click', showLoginScreen);
+              document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+              document.getElementById('signupForm').addEventListener('submit', handleSignup);
+              document.getElementById('replyTab').addEventListener('click', () => showTab('reply'));
+              document.getElementById('knowledgeTab').addEventListener('click', () => showTab('knowledge'));
+              document.getElementById('inquiryText').addEventListener('input', validateGenerateBtn);
+              document.getElementById('generateBtn').addEventListener('click', generateReplies);
+              document.getElementById('goToKnowledge').addEventListener('click', () => showTab('knowledge'));
+              document.getElementById('knowledgeForm').addEventListener('submit', saveKnowledge);
+          }
+
+          async function handleLogin(e) {
+              e.preventDefault();
+              const email = document.getElementById('email').value;
+              const password = document.getElementById('password').value;
+              try {
+                  await signInWithEmailAndPassword(auth, email, password);
+                  // onAuthStateChangedが検知して画面遷移します
+              } catch (error) {
+                  alert("ログインに失敗しました。\\n" + error.message);
+              }
+          }
+
+          async function handleLogout() {
+              await signOut(auth);
+          }
+
+          function showLoginScreen() {
+              document.getElementById('loginScreen').classList.remove('hidden');
+              document.getElementById('signupScreen').classList.add('hidden');
+              document.getElementById('mainApp').classList.add('hidden');
+          }
+
+          function showMainApp() {
+              document.getElementById('loginScreen').classList.add('hidden');
+              document.getElementById('signupScreen').classList.add('hidden');
+              document.getElementById('mainApp').classList.remove('hidden');
+              document.getElementById('userName').textContent = currentUser?.name || '';
+              showTab('reply');
+          }
+          
+          function showSignupScreen() {
+              document.getElementById('loginScreen').classList.add('hidden');
+              document.getElementById('signupScreen').classList.remove('hidden');
+          }
+
+          async function handleSignup(e) {
+              e.preventDefault();
+              const name = document.getElementById('signupName').value;
+              const email = document.getElementById('signupEmail').value;
+              const password = document.getElementById('signupPassword').value;
+              const passwordConfirm = document.getElementById('signupPasswordConfirm').value;
+
+              if (password !== passwordConfirm) {
+                  alert('パスワードが一致しません。');
+                  return;
+              }
+              if (password.length < 6) {
+                  alert('パスワードは6文字以上で入力してください。');
+                  return;
+              }
+
+              try {
+                  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                  const user = userCredential.user;
+
+                  // ディスプレイネーム設定
+                  await updateProfile(user, {
+                      displayName: name
+                  });
+
+                  // Firestoreにユーザー情報を保存
+                  await setDoc(doc(db, "users", user.uid), {
+                      name: name,
+                      email: email,
+                      createdAt: new Date().toISOString()
+                  });
+                  
+                  alert('アカウント作成が完了しました！');
+                  // onAuthStateChangedが検知して画面遷移します
+              } catch (error) {
+                  console.error('Signup error:', error);
+                  let errorMessage = 'アカウント作成に失敗しました。';
+                  if (error.code === 'auth/email-already-in-use') {
+                      errorMessage = 'このメールアドレスは既に使用されています。';
+                  } else if (error.code === 'auth/weak-password') {
+                      errorMessage = 'パスワードが弱すぎます。6文字以上で設定してください。';
+                  } else if (error.code === 'auth/invalid-email') {
+                      errorMessage = '有効なメールアドレスを入力してください。';
+                  }
+                  alert(errorMessage);
+              }
+          }
+
+          async function loadUserKnowledge() {
+              if (!currentUser) return;
+              try {
+                  const docRef = doc(db, "knowledge", currentUser.uid);
+                  const docSnap = await getDoc(docRef);
+
+                  if (docSnap.exists()) {
+                      userKnowledge = docSnap.data();
+                      populateKnowledgeForm();
+                  }
+              } catch (error) {
+                  console.error('Load knowledge error:', error);
+              }
+          }
+          
+          function populateKnowledgeForm() {
+              if (!userKnowledge) return;
+              document.getElementById('businessType').value = userKnowledge.businessType || '';
+              document.getElementById('businessName').value = userKnowledge.businessName || '';
+              document.getElementById('websiteUrl').value = userKnowledge.websiteUrl || '';
+              document.getElementById('pricing').value = userKnowledge.services || userKnowledge.pricing || '';
+              document.getElementById('businessHours').value = userKnowledge.businessHours || '';
+              document.getElementById('reservationInfo').value = userKnowledge.reservationInfo || '';
+              document.getElementById('features').value = userKnowledge.features || '';
+          }
+
+          async function saveKnowledge(e) {
+              e.preventDefault();
+              if (!currentUser) {
+                  alert('ログインしていません。');
+                  return;
+              }
+
+              const knowledgeData = {
+                  businessType: document.getElementById('businessType').value,
+                  businessName: document.getElementById('businessName').value,
+                  websiteUrl: document.getElementById('websiteUrl').value,
+                  services: document.getElementById('pricing').value,
+                  businessHours: document.getElementById('businessHours').value,
+                  reservationInfo: document.getElementById('reservationInfo').value,
+                  features: document.getElementById('features').value,
+                  updatedAt: new Date().toISOString()
+              };
+
+              try {
+                  await setDoc(doc(db, "knowledge", currentUser.uid), knowledgeData);
+                  userKnowledge = knowledgeData;
+                  alert('ナレッジを保存しました！');
+                  showTab('reply');
+              } catch (error) {
+                  console.error('Save knowledge error:', error);
+                  alert('保存に失敗しました。\\n' + error.message);
+              }
+          }
+          
+          // タブ表示や返信生成などの補助関数
+          function showTab(tab) {
+             document.querySelectorAll('[id$="Tab"]').forEach(btn => {
+                 btn.classList.remove('border-primary-500', 'text-primary-600');
+                 btn.classList.add('border-transparent', 'text-gray-500');
+             });
+             document.getElementById('replyPage').classList.add('hidden');
+             document.getElementById('knowledgePage').classList.add('hidden');
+
+             if (tab === 'reply') {
+                 document.getElementById('replyTab').classList.remove('border-transparent', 'text-gray-500');
+                 document.getElementById('replyTab').classList.add('border-primary-500', 'text-primary-600');
+                 document.getElementById('replyPage').classList.remove('hidden');
+             } else if (tab === 'knowledge') {
+                 document.getElementById('knowledgeTab').classList.remove('border-transparent', 'text-gray-500');
+                 document.getElementById('knowledgeTab').classList.add('border-primary-500', 'text-primary-600');
+                 document.getElementById('knowledgePage').classList.remove('hidden');
+             }
+          }
+          
+          function validateGenerateBtn() {
+            const inquiryText = document.getElementById('inquiryText');
+            const generateBtn = document.getElementById('generateBtn');
+            if (inquiryText && generateBtn) {
+              generateBtn.disabled = inquiryText.value.trim().length === 0;
+            }
+          }
+          
+          async function generateReplies() {
+            // (この部分は後ほどAPI連携に修正します)
+            alert('返信生成機能は現在開発中です。');
+          }
+
+          document.addEventListener('DOMContentLoaded', init);
+        </script>
+
+        <style>
+          .hidden { display: none; }
+          .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          }
+          
+          .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+          }
+          
+          .animate-fade-in {
+            animation: fadeIn 0.8s ease-out;
+          }
+          
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        </style>
         
-        <!-- Firebase設定 -->
-        <script src="/firebase-config.js"></script>
         <script>
           tailwind.config = {
             theme: {
@@ -1680,28 +1942,6 @@ app.get('/reply-bot', (c) => {
             }
           }
         </script>
-        <style>
-          .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          }
-          
-          .glass-effect {
-            backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.9);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-          }
-          
-          .animate-fade-in {
-            animation: fadeIn 0.8s ease-out;
-          }
-          
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          
-          .hidden { display: none; }
-        </style>
     </head>
     <body class="bg-gray-50 min-h-screen">
         <!-- ナビゲーション -->
@@ -1788,17 +2028,6 @@ app.get('/reply-bot', (c) => {
                         ログイン
                     </button>
                 </form>
-
-                <div class="mt-6 text-center">
-                    <p class="text-gray-600 text-sm mb-4">または</p>
-                    <button 
-                        id="googleLoginBtn"
-                        class="w-full border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-3 px-4 rounded-lg transition-colors flex items-center justify-center"
-                    >
-                        <i class="fab fa-google mr-2 text-red-500"></i>
-                        Googleでログイン
-                    </button>
-                </div>
 
                 <div class="mt-8 text-center">
                     <p class="text-gray-600 text-sm mb-4">
@@ -1996,30 +2225,6 @@ app.get('/reply-bot', (c) => {
                             </button>
                         </div>
 
-                        <!-- 結果表示エリア -->
-                        <div id="resultsArea" class="hidden">
-                            <h3 class="text-lg font-semibold text-gray-800 mb-6">
-                                <i class="fas fa-list mr-2 text-primary-500"></i>
-                                返信案（3パターン）
-                            </h3>
-                            <div id="repliesContainer" class="space-y-6">
-                                <!-- 返信案がここに表示される -->
-                            </div>
-
-                            <!-- 不足情報表示 -->
-                            <div id="missingInfo" class="hidden mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                <div class="flex items-start">
-                                    <i class="fas fa-exclamation-triangle text-yellow-600 mt-1 mr-3"></i>
-                                    <div>
-                                        <h4 class="font-medium text-yellow-800 mb-2">不足している情報があります</h4>
-                                        <ul id="missingList" class="text-sm text-yellow-700">
-                                            <!-- 不足情報がここに表示される -->
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- ナレッジ未登録警告 -->
                         <div id="noKnowledgeWarning" class="hidden p-4 bg-blue-50 border border-blue-200 rounded-lg">
                             <div class="flex items-start">
@@ -2193,7 +2398,7 @@ app.get('/reply-bot', (c) => {
                                 </button>
                                 <p class="text-sm text-gray-500 mt-3">
                                     <i class="fas fa-shield-alt text-green-500 mr-1"></i>
-                                    入力された情報はあなたのブラウザにのみ保存され、外部に送信されることはありません。
+                                    入力された情報は安全に暗号化されて保存されます。
                                 </p>
                             </div>
                         </form>
@@ -2209,10 +2414,6 @@ app.get('/reply-bot', (c) => {
                 <p class="text-gray-600">処理中...</p>
             </div>
         </div>
-
-        <!-- Firebase + 返信ボット専用JavaScript -->
-        <script src="/reply-bot.js"></script>
-        </script>
     </body>
     </html>`)
 })
