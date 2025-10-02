@@ -775,13 +775,15 @@ app.get('/', (c) => {
             signOut 
           } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 
-          // Firebase設定（環境変数使用）
+          // Firebase設定（環境変数 or フォールバック）
           const firebaseConfig = {
-            apiKey: "AlzaSyAy-IH56f2DtXPp5wXIWGaY_vIiaoVVbyuM", // 公開してOKなキー
-            authDomain: "aiink-231e7.firebaseapp.com",
-            projectId: "aiink-231e7",
-            appId: "1:198276519701:web:c5e8f7a8b9d1e2f3g4h5i6j7"
+            apiKey: import.meta?.env?.VITE_FIREBASE_API_KEY || "AlzaSyAy-IH56f2DtXPp5wXIWGaY_vIiaoVVbyuM",
+            authDomain: import.meta?.env?.VITE_FIREBASE_AUTH_DOMAIN || "aiink-231e7.firebaseapp.com",
+            projectId: import.meta?.env?.VITE_FIREBASE_PROJECT_ID || "aiink-231e7",
+            appId: import.meta?.env?.VITE_FIREBASE_APP_ID || "1:198276519701:web:c5e8f7a8b9d1e2f3g4h5i6j7"
           };
+          
+          console.log('🔥 Firebase Config Source:', import.meta?.env?.VITE_FIREBASE_API_KEY ? 'Environment Variables' : 'Hardcoded');
 
           const app = initializeApp(firebaseConfig);
           const auth = getAuth(app);
