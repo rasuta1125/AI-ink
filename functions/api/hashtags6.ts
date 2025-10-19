@@ -1,11 +1,6 @@
-// ハッシュタグ生成API - Firebase認証付き
-import { authenticateRequest } from "../_lib/auth";
-import { getUserUsage, incrementUsage, checkRateLimit } from "../_lib/usage";
-
+// ハッシュタグ生成API
 export interface Env {
-  FIREBASE_PROJECT_ID: string;
   OPENAI_API_KEY: string;
-  USER_USAGE_KV: KVNamespace;
 }
 
 export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
@@ -23,55 +18,88 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
   }
 
   try {
-    // Firebase IDトークン検証
-    const user = await authenticateRequest(request, env.FIREBASE_PROJECT_ID);
-    console.log('認証済みユーザー:', user.email);
-
-    // KV利用状況管理（KVが設定されている場合のみ）
-    if (env.USER_USAGE_KV) {
-      // レート制限チェック
-      const rateAllowed = await checkRateLimit(env.USER_USAGE_KV, user.sub, 'hashtags6');
-      if (!rateAllowed) {
-        return new Response(JSON.stringify({ error: 'レート制限：5秒後に再試行してください' }), {
-          status: 429,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          },
-        });
-      }
-
-      // 利用上限チェック
-      const userUsage = await getUserUsage(env.USER_USAGE_KV, user.sub);
-      if (userUsage.remaining <= 0) {
-        return new Response(JSON.stringify({ 
-          error: '利用上限に達しました',
-          plan: userUsage.plan,
-          limit: userUsage.limit,
-          used: userUsage.used
-        }), {
-          status: 402,
-          headers: {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*',
-          },
-        });
-      }
-
-      // 利用回数を増加
-      await incrementUsage(env.USER_USAGE_KV, user.sub);
+    const { topic, platform } = await request.json();
+    
+    if (!topic) {
+      return new Response(JSON.stringify({ error: 'トピックが必要です' }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
     }
 
-    // リクエストボディ取得
-    const body = await request.json() as {
-      industry: string;
-      topic: string;
+    const openaiApiKey = env.OPENAI_API_KEY;
+    if (!openaiApiKey) {
+      return new Response(JSON.stringify({ error: 'OpenAI API key not configured' }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+
+    const platformMapping = {
+      instagram: 'Instagram（エンゲージメント重視、人気ハッシュタグ含む）',
+      twitter: 'Twitter（トレンド性重視、短めで覚えやすい）',
+      tiktok: 'TikTok（バイラル性重視、若者向け）',
+      linkedin: 'LinkedIn（ビジネス・プロフェッショナル向け）'
     };
 
-    // ハッシュタグ生成ロジック（フォールバック実装）
-    const hashtags = generateHashtagsFallback(body);
+    const selectedPlatform = platformMapping[platform as keyof typeof platformMapping] || 'Instagram';
 
-    return new Response(JSON.stringify({ hashtags }), {
+    // OpenAI APIを呼び出してハッシュタグを生成
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'あなたは優秀なSNSマーケティング専門家です。与えられたトピックとプラットフォームに最適化されたハッシュタグを生成してください。'
+          },
+          {
+            role: 'user',
+            content: `トピック: ${topic}\nプラットフォーム: ${selectedPlatform}\n\n上記のトピックについて、${selectedPlatform}で効果的なハッシュタグを20個生成してください。人気度と関連性を考慮し、#を付けて1行に1つずつ表示してください。`
+          }
+        ],
+        temperature: 0.6,
+        max_tokens: 600,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error('OpenAI API Error:', errorData);
+      return new Response(JSON.stringify({ error: 'OpenAI API呼び出しエラー' }), {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      });
+    }
+
+    const data = await response.json();
+    const generatedText = data.choices[0]?.message?.content || '';
+    
+    // 生成されたテキストからハッシュタグを抽出
+    const hashtags = generatedText
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.startsWith('#'))
+      .slice(0, 20);
+
+    return new Response(JSON.stringify({ 
+      success: true,
+      hashtags: hashtags.length > 0 ? hashtags : ['#' + topic.replace(/\s+/g, '')]
+    }), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
@@ -80,19 +108,8 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     });
 
   } catch (error) {
-    console.error('Hashtags API エラー:', error);
-    
-    if (error.message.includes('token') || error.message.includes('authorization')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      });
-    }
-
-    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+    console.error('Hashtag Generation Error:', error);
+    return new Response(JSON.stringify({ error: 'ハッシュタグ生成でエラーが発生しました' }), {
       status: 500,
       headers: {
         'Content-Type': 'application/json',
@@ -101,40 +118,3 @@ export const onRequestPost: PagesFunction<Env> = async ({ request, env }) => {
     });
   }
 };
-
-function generateHashtagsFallback(params: {
-  industry: string;
-  topic: string;
-}): string[] {
-  const { industry, topic } = params;
-
-  // 汎用タグ (2個)
-  const generalTags = ['#今日', '#おすすめ', '#情報', '#お知らせ', '#発見'];
-  
-  // 業種別カテゴリタグ (2個)
-  const categoryTags = {
-    creator: ['#クリエイター', '#デザイン', '#アート', '#制作'],
-    salon: ['#美容', '#サロン', '#エステ', '#癒し'],
-    ec: ['#ショップ', '#ハンドメイド', '#EC', '#商品'],
-    local: ['#地域', '#イベント', '#ローカル', '#まちづくり'],
-    other: ['#ビジネス', '#仕事', '#ライフスタイル', '#日常']
-  };
-
-  // トピック特化ニッチタグ (2個)
-  const topicWords = topic.split(' ').filter(word => word.length > 1);
-  const nicheTags = [
-    `#${topicWords[0] || 'お得'}`,
-    `#${topic.slice(0, 4) || 'おすすめ'}情報`,
-    '#限定', '#新着', '#特別', '#注目'
-  ];
-
-  const industryKey = industry as keyof typeof categoryTags;
-  const selectedCategoryTags = categoryTags[industryKey] || categoryTags.other;
-
-  // 2:2:2の構成で6個選択
-  return [
-    ...generalTags.slice(0, 2),        // 汎用×2
-    ...selectedCategoryTags.slice(0, 2), // カテゴリ×2
-    ...nicheTags.slice(0, 2)           // ニッチ×2
-  ];
-}
